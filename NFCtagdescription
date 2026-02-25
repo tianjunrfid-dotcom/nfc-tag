@@ -1,0 +1,120 @@
+NFC Tag Technical Code Documentation for GitHub
+Introduction
+NFC tags are passive, unpowered chips operating at 13.56 MHz (ISO/IEC 18000-3/14443) that store small data payloads (URLs, Wi-Fi credentials, etc.) and communicate via magnetic induction. This documentation provides technical implementation details and code examples for interacting with NFC tags using Python, focusing on NTAG21x series chips compatible with modern smartphones.
+
+Technical Specifications
+Chip Types: NTAG213 (144 bytes), NTAG215 (504 bytes), NTAG216 (888 bytes)
+Communication Protocol: ISO/IEC 14443 Type A with NDEF Type 2 format
+Range: ≤4cm contactless interaction
+Security: 32-bit password protection, lockable memory sectors
+Smartphone Compatibility: Apple Shortcuts, Android NFC Tools/Tasker
+Python Implementation with nfcpy
+Installation
+bash
+pip install nfcpy
+Reading NFC Tags
+python
+import nfc
+from ndef import SmartPosterRecord
+
+def read_nfc_tag():
+    with nfc.ContactlessFrontend('usb') as clf:
+        target = clf.sense(nfc.tag.tt3)
+        tag = nfc.tag.activate(clf, target)
+        
+        if hasattr(tag, 'ndef'):
+            for record in tag.ndef.records:
+                if isinstance(record, SmartPosterRecord):
+                    print(f"URL: {record.uri}")
+                    print(f"Title: {record.title}")
+        else:
+            print("No NDEF data found")
+
+if __name__ == "__main__":
+    read_nfc_tag()
+Writing NFC Tags
+python
+import nfc
+import ndef
+
+def write_nfc_tag():
+    url = "https://github.com/tianjunrfid-dotcom"
+    title = "GitHub Project"
+    
+    clf = nfc.ContactlessFrontend('usb')
+    target = clf.sense(nfc.tag.tt3, timeout=0.5)
+    
+    if target:
+        tag = nfc.tag.activate(clf, target)
+        records = [ndef.SmartPosterRecord(uri=url, title=title)]
+        tag.ndef.records = records
+        print("Successfully written to tag")
+    else:
+        print("No tag detected")
+
+if __name__ == "__main__":
+    write_nfc_tag()
+Security Best Practices
+Data Validation:
+Always validate NDEF payloads before processing
+Use cryptographic signatures for sensitive data
+python
+import hashlib
+def validate_payload(payload, signature):
+    return hashlib.sha256(payload).digest() == signature
+Password Protection:
+python
+# Enable password protection
+tag.password = b"SecurePass"
+tag.auth0 = 0x00  # Require authentication for all sectors
+Secure Erasure:
+python
+# Lock memory sectors permanently
+tag.lock_bytes(sector_range)
+Common Use Cases
+Automation with Smartphones
+Android: Use NFC Tools to trigger Tasker automation
+java
+// Example Android NFC intent filter
+<intent-filter>
+    <action android:name="android.nfc.action.NDEF_DISCOVERED"/>
+    <category android:name="android.intent.category.DEFAULT"/>
+    <data android:mimeType="text/plain"/>
+</intent-filter>
+iOS: Configure Shortcuts app to execute actions on NFC scan
+Contactless Payments
+python
+# Example payment data structure
+payment_record = ndef.Record(
+    tnf=ndef.TNF_WELL_KNOWN,
+    rtype=b"pay",
+    rdata=b"\x01\x00\x00\x00\x05\x00"  # Payment protocol header
+)
+Troubleshooting
+Tag Detection Issues:
+Ensure USB permissions with udev rules
+sudo
+echo 'SUBSYSTEM=="usb", ATTRS{idVendor}=="054c", MODE="0666"' | sudo tee /etc/udev/rules.d/nfc.rules
+Data Corruption:
+Implement CRC checks for critical data
+python
+import zlib
+def add_crc(data):
+    return data + bytes([zlib.crc32(data) & 0xFF])
+Repository Structure
+.
+├── README.md          # This documentation
+├── requirements.txt   # Python dependencies
+├── nfc_reader.py      # Tag reading implementation
+├── nfc_writer.py      # Tag writing implementation
+└── examples/          # Use case demos
+    ├── automation/
+    └── payment/
+Contributing
+Follow PEP-8 style guidelines
+Include test cases for new functionality
+Update documentation with major changes
+
+
+
+Technical Support：https://www.tjnfctag.com/
